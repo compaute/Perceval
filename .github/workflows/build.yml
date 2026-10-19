@@ -1,3 +1,4 @@
+
 name: Construire l'APK
 on:
   push:
@@ -9,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -16,11 +19,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-      - run: unzip -o sors-moi-android.zip -d projet
+      - name: Prendre le dernier zip envoyé
+        run: |
+          ZIP=$(git log --diff-filter=AM --name-only --pretty=format: -- '*.zip' | grep -v '^$' | head -1)
+          echo "Zip utilisé : $ZIP"
+          unzip -o "$ZIP" -d projet
+          grep versionName projet/app/build.gradle
       - run: gradle assembleRelease --no-daemon
         working-directory: projet
-      - run: cp projet/app/build/outputs/apk/release/app-release.apk sors-moi.apk
+      - run: cp projet/app/build/outputs/apk/release/app-release.apk sors-moi-${{ github.run_number }}.apk
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          files: sors-moi.apk
+          tag_name: build-${{ github.run_number }}
+          name: Sors-moi build ${{ github.run_number }}
+          files: sors-moi-${{ github.run_number }}.apk
+          make_latest: true
